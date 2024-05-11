@@ -1,0 +1,64 @@
+name: Build and Release Windows EXE
+
+on:
+  push:
+    tags:
+      - 'v*'  # 触发器设置为任何带 v 前缀的标签
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'  # 根据需要选择 Python 版本
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller requests
+
+      - name: Build the EXE with PyInstaller
+        run: pyinstaller --onefile pythonProject/main.py
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload EXE to Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-exe
+          path: dist/main.exe
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Download EXE from Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-exe
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: "Here is the new release with the Windows executable."
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./main.exe
+          asset_name: main.exe
+          asset_content_type: application/octet-stream
