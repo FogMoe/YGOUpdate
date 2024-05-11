@@ -1,0 +1,2 @@
+# 阻止当前文件夹内的expansions文件夹被导入
+expansions/
